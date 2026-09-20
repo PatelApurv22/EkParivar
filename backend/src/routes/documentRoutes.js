@@ -26,10 +26,10 @@ const upload = multer({
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const { familyId, documentType, memberId } = req.body;
-    if (!familyId || !documentType) {
+    if (!familyId || !documentType || !memberId) {
       return res.status(400).json({
         success: false,
-        message: 'familyId and documentType are required fields.'
+        message: 'familyId, memberId, and documentType are required fields.'
       });
     }
 
@@ -40,6 +40,15 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       });
     }
 
+    const Member = require('../models/Member');
+    const member = await Member.findOne({ _id: memberId, familyId });
+    if (!member) {
+      return res.status(400).json({
+        success: false,
+        message: 'The selected member does not belong to this family.'
+      });
+    }
+
     // Upload file buffer to Cloudinary
     const cloudinaryRes = await uploadToCloudinary(
       req.file.buffer,
@@ -47,8 +56,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       req.file.mimetype
     );
 
-    // Upsert or create new document record for this family & documentType
-    let docRecord = await Document.findOne({ familyId, documentType });
+    // Each member owns their own document set. Never replace another member's proof.
+    let docRecord = await Document.findOne({ familyId, memberId, documentType });
 
     if (docRecord) {
       // Replace existing document file
@@ -65,7 +74,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     } else {
       docRecord = new Document({
         familyId,
-        memberId: memberId || null,
+        memberId,
         documentType,
         fileName: req.file.originalname,
         fileUrl: cloudinaryRes.fileUrl,
@@ -88,7 +97,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         familyId,
         documentType,
         fileName: docRecord.fileName,
-        fileUrl: docRecord.fileUrl
+        fileUrl: docRecord.fileUrl,
+        memberId,
+        memberName: member.name
       }
     });
 
@@ -110,7 +121,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 router.get('/family/:familyId', async (req, res) => {
   try {
     const { familyId } = req.params;
-    let documents = await Document.find({ familyId }).sort({ createdAt: -1 });
+    let documents = await Document.find({ familyId })
+      .populate('memberId', 'name relationToHOF')
+      .sort({ createdAt: -1 });
 
     if (documents.length === 0) {
       // Auto-aggregate documents from Family, FamilyApplication & Members
@@ -311,7 +324,9 @@ router.get('/all', async (req, res) => {
     if (status && status !== 'All') filter.status = status;
     if (documentType && documentType !== 'All') filter.documentType = documentType;
 
-    let documents = await Document.find(filter).sort({ createdAt: -1 });
+    let documents = await Document.find(filter)
+      .populate('memberId', 'name relationToHOF')
+      .sort({ createdAt: -1 });
 
     if (documents.length === 0 && !status && !documentType) {
       // Auto populate initial documents if vault is empty

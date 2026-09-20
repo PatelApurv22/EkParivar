@@ -652,6 +652,7 @@ export const apiService = {
             familyId: member.familyId,
             schemeId: scheme._id,
             schemeName: scheme.schemeName,
+            schemeCode: scheme.schemeCode,
             department: scheme.department,
             benefitAmount: scheme.benefitAmount,
             isEligible: evalResult.isEligible,
@@ -892,6 +893,7 @@ export const apiService = {
       const familyId = formData.get('familyId');
       const mobile = formData.get('mobile');
       const documentType = formData.get('documentType');
+      const memberId = formData.get('memberId');
       const file = formData.get('file');
 
       if (!familyId && !mobile) {
@@ -899,6 +901,9 @@ export const apiService = {
       }
       if (!documentType) {
         return { success: false, message: "documentType is required" };
+      }
+      if (!memberId) {
+        return { success: false, message: "memberId is required. Select a family member first." };
       }
 
       let localDocs = loadState('documents', []);
@@ -936,6 +941,8 @@ export const apiService = {
         familyId: canonicalFamId,
         mobile: canonicalMobile,
         applicationRefNo: canonicalAppRef,
+        memberId,
+        memberName: localMemList.find(member => String(member._id) === String(memberId))?.name || '',
         documentType,
         fileName: file && file.name ? file.name : `${documentType.replace(/\s+/g, '_')}_Proof.pdf`,
         fileUrl: fileUrl,
@@ -944,7 +951,8 @@ export const apiService = {
         status: 'pending'
       };
 
-      // Unshift so newly uploaded documents appear first
+      // Replace only this member's document of this type.
+      localDocs = localDocs.filter(d => !(d.familyId === canonicalFamId && d.memberId === memberId && d.documentType === documentType));
       localDocs.unshift(newDoc);
       saveState('documents', localDocs);
 

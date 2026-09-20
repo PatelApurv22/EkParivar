@@ -164,8 +164,10 @@ export const SchemeListPage = () => {
           if (isLoggedIn && role === 'officer') {
             const matchesForSch = officerMatches.filter(m => {
               const sId = m.schemeId?._id || m.schemeId || m.scheme?._id;
-              const sCode = m.schemeId?.schemeCode || m.scheme?.schemeCode;
-              return (sId && String(sId) === String(sch._id)) || (sCode && sCode === sch.schemeCode);
+              const sCode = m.schemeId?.schemeCode || m.scheme?.schemeCode || m.schemeCode;
+              return (sId && String(sId) === String(sch._id)) ||
+                (sCode && sCode === sch.schemeCode) ||
+                (m.schemeName && m.schemeName === sch.schemeName);
             });
             officerMatchedCount = matchesForSch.filter(m => m.isEligible).length;
             officerEnrolledCount = matchesForSch.filter(m => m.isEnrolled).length;

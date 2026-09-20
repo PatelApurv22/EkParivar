@@ -93,6 +93,7 @@ router.get('/all', async (req, res) => {
           familyId: member.familyId,
           schemeId: scheme._id,
           schemeName: scheme.schemeName,
+          schemeCode: scheme.schemeCode,
           department: scheme.department,
           benefitAmount: scheme.benefitAmount,
           isEligible: evalResult.isEligible,

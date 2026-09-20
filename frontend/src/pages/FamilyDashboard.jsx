@@ -35,6 +35,7 @@ export const FamilyDashboard = () => {
   const [documents, setDocuments] = useState([]);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [selectedDocType, setSelectedDocType] = useState('Aadhaar Card');
+  const [selectedMemberId, setSelectedMemberId] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -57,6 +58,7 @@ export const FamilyDashboard = () => {
         if (famRes.success) {
           setFamilyData(famRes.family);
           setMembers(famRes.members || []);
+          setSelectedMemberId((current) => current || famRes.members?.[0]?._id || '');
         }
 
         const matchRes = await apiService.getEligibilityForFamily(targetFamId);
@@ -722,17 +724,26 @@ export const FamilyDashboard = () => {
                 <div className="border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
                     <Upload className="w-4 h-4 text-blue-600" />
-                    Upload Supporting Document to Cloud Vault
+                    Upload Member Document to Cloud Vault
                   </h3>
                   <p className="text-slate-500 text-[11px] mt-0.5">
-                    Upload official PDF or Image proof. Files are securely stored via Cloudinary for Officer verification.
+                    Every family member must have their own Aadhaar Card. Select the member whose document is being uploaded.
                   </p>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
+                  <strong>Aadhaar upload checklist:</strong> {members.filter((member) => documents.some((doc) => String(doc.memberId?._id || doc.memberId) === String(member._id) && doc.documentType === 'Aadhaar Card')).length} of {members.length} members have uploaded Aadhaar.
+                  {members.filter((member) => !documents.some((doc) => String(doc.memberId?._id || doc.memberId) === String(member._id) && doc.documentType === 'Aadhaar Card')).length > 0 && (
+                    <span className="block mt-1 text-amber-800">
+                      Missing: {members.filter((member) => !documents.some((doc) => String(doc.memberId?._id || doc.memberId) === String(member._id) && doc.documentType === 'Aadhaar Card')).map((member) => member.name).join(', ')}
+                    </span>
+                  )}
                 </div>
 
                 <form onSubmit={async (e) => {
                   e.preventDefault();
-                  if (!selectedFile || !selectedDocType) {
-                    setDocToast({ type: 'error', text: 'Please select a document type and a file.' });
+                  if (!selectedFile || !selectedDocType || !selectedMemberId) {
+                    setDocToast({ type: 'error', text: 'Please select a member, document type, and file.' });
                     return;
                   }
                   setIsUploading(true);
@@ -744,12 +755,14 @@ export const FamilyDashboard = () => {
                       formData.append('mobile', mobile || familyData?.mobile);
                     }
                     formData.append('documentType', selectedDocType);
+                    formData.append('memberId', selectedMemberId);
                     formData.append('file', selectedFile);
 
                     const res = await apiService.uploadDocument(formData);
                     setIsUploading(false);
                     if (res.success) {
-                      setDocToast({ type: 'success', text: `✅ "${selectedDocType}" uploaded to Cloudinary successfully!` });
+                      const selectedMember = members.find((member) => member._id === selectedMemberId);
+                      setDocToast({ type: 'success', text: `"${selectedDocType}" uploaded for ${selectedMember?.name || 'member'} successfully.` });
                       setSelectedFile(null);
                       const docsRes = await apiService.getFamilyDocuments(targetFamId);
                       if (docsRes.success) setDocuments(docsRes.documents || []);
@@ -760,7 +773,22 @@ export const FamilyDashboard = () => {
                     setIsUploading(false);
                     setDocToast({ type: 'error', text: 'Document upload failed. Please try again.' });
                   }
-                }} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end text-xs">
+                }} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Member *</label>
+                    <select
+                      value={selectedMemberId}
+                      onChange={(e) => setSelectedMemberId(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      required
+                    >
+                      <option value="">Select member</option>
+                      {members.map((member) => (
+                        <option key={member._id} value={member._id}>{member.name}{member.relationToHOF === 'Self' ? ' (Head)' : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Document Type *</label>
                     <select
@@ -827,10 +855,10 @@ export const FamilyDashboard = () => {
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-bold text-slate-800 m-0 flex items-center gap-2">
                     <FolderOpen className="w-4 h-4 text-blue-600" />
-                    Uploaded Documents ({documents.length})
+                    Member Documents ({documents.length})
                   </h3>
                   <span className="text-xs text-slate-500">
-                    Linked to Family ID: <strong className="font-mono text-slate-800">{familyData?.familyId || familyId}</strong>
+                    Aadhaar required for every member
                   </span>
                 </div>
 
@@ -842,10 +870,13 @@ export const FamilyDashboard = () => {
                   </div>
                 ) : (
                   <div className="grid gap-3">
-                    {documents.map((doc) => (
+                    {documents.map((doc) => {
+                      const docMember = members.find((member) => String(member._id) === String(doc.memberId?._id || doc.memberId));
+                      return (
                       <div key={doc._id} className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
+                            <strong className="text-sm font-bold text-blue-900">{docMember?.name || doc.memberName || 'Member'}</strong>
                             <strong className="text-sm font-bold text-slate-900">{doc.documentType}</strong>
                             {doc.status === 'verified' && (
                               <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-1">
@@ -890,6 +921,7 @@ export const FamilyDashboard = () => {
                           <button
                             onClick={() => {
                               setSelectedDocType(doc.documentType);
+                              setSelectedMemberId(String(doc.memberId?._id || doc.memberId || docMember?._id || ''));
                               window.scrollTo({ top: 300, behavior: 'smooth' });
                             }}
                             className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 text-xs transition"
@@ -899,7 +931,8 @@ export const FamilyDashboard = () => {
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

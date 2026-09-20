@@ -38,6 +38,11 @@ export const DocumentViewerModal = ({ document, onClose }) => {
               <p className="text-xs text-slate-400 font-mono m-0 mt-0.5">
                 {document.fileName}
               </p>
+              {(document.memberId?.name || document.memberName) && (
+                <p className="text-[11px] text-blue-300 m-0 mt-1">
+                  Member: {document.memberId?.name || document.memberName}
+                </p>
+              )}
             </div>
           </div>
 

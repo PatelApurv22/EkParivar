@@ -5,7 +5,7 @@ import { calculateAge } from '../utils/eligibilityEngine';
 import {
   Users, Layers, ShieldAlert, Sparkles, PlusCircle, Search, Filter,
   CheckCircle2, FileText, AlertTriangle, Activity, Eye, Check, Clock, XCircle, FileCheck,
-  Pencil, Scissors, ShieldCheck, FolderOpen, ExternalLink, Upload, UserPlus, UserCheck
+  Pencil, Scissors, ShieldCheck, FolderOpen, ExternalLink, Upload, UserPlus, UserCheck, RefreshCw
 } from 'lucide-react';
 
 export const OfficerDashboard = () => {
@@ -875,7 +875,7 @@ export const OfficerDashboard = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search documents by Family ID, Document Type, or File Name..."
+                placeholder="Search by Family ID, Member, Document Type, or File Name..."
                 className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
@@ -887,6 +887,8 @@ export const OfficerDashboard = () => {
               const matchesStatus = vaultDocStatusFilter === 'All' || d.status === vaultDocStatusFilter;
               const matchesQuery = !searchQuery || 
                 (d.familyId && d.familyId.toLowerCase().includes(searchQuery.toLowerCase())) || 
+                (d.memberId?.name && d.memberId.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (d.memberName && d.memberName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 (d.documentType && d.documentType.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 (d.fileName && d.fileName.toLowerCase().includes(searchQuery.toLowerCase()));
               return matchesStatus && matchesQuery;
@@ -907,6 +909,7 @@ export const OfficerDashboard = () => {
                     <tr className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
                       <th className="p-3">Document Type</th>
                       <th className="p-3">Family ID</th>
+                      <th className="p-3">Member</th>
                       <th className="p-3">File Name</th>
                       <th className="p-3">Uploaded Date</th>
                       <th className="p-3">Verification Status</th>
@@ -923,6 +926,12 @@ export const OfficerDashboard = () => {
                           <span className="font-mono bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-[11px] font-bold">
                             {doc.familyId}
                           </span>
+                        </td>
+                        <td className="p-3 font-semibold text-slate-800">
+                          {doc.memberId?.name || doc.memberName || 'Family-level proof'}
+                          {doc.memberId?.relationToHOF && (
+                            <span className="block text-[10px] text-slate-500 font-normal">{doc.memberId.relationToHOF}</span>
+                          )}
                         </td>
                         <td className="p-3 text-slate-600 font-mono text-[11px]">
                           {doc.fileName}
