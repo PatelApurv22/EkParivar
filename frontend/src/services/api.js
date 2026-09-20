@@ -2,7 +2,12 @@ import axios from 'axios';
 import { MOCK_FAMILIES, MOCK_MEMBERS, MOCK_SCHEMES, MOCK_ENROLLMENTS, MOCK_AUDIT_LOGS } from '../data/mockData';
 import { checkEligibility } from '../utils/eligibilityEngine';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const configuredApiUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+const API_BASE_URL = configuredApiUrl
+  ? configuredApiUrl.replace(/\/$/, '').endsWith('/api')
+    ? configuredApiUrl.replace(/\/$/, '')
+    : `${configuredApiUrl.replace(/\/$/, '')}/api`
+  : 'http://localhost:5000/api';
 
 // Local storage state initialization for seamless mock persistence during demo
 const loadState = (key, fallback) => {
